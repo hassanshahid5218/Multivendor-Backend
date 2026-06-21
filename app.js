@@ -21,10 +21,7 @@ if(process.env.NODE_ENV!=='production'){
     })
 }
 const allowedOrigins = [
-  'http://localhost:3002',
-  'http://localhost:3001',
-  'http://localhost:3000',
-  'http://127.0.0.1:3002'
+   "https://multivendor-frontend-liart.vercel.app"
 ];
 
 const corsOptions = {
