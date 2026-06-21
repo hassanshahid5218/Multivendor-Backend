@@ -21,7 +21,7 @@ if(process.env.NODE_ENV!=='production'){
     })
 }
 const allowedOrigins = [
-   "https://multivendor-frontend-liart.vercel.app"
+  "https://multivendor-frontend-liart.vercel.app"
 ];
 
 const corsOptions = {
