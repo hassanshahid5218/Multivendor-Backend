@@ -43,11 +43,13 @@ app.use(cookieParser());
 app.use(cors(corsOptions));
 app.use('/',express.static("upload"));
 app.use(bodyParser.urlencoded({extended:true}));
-app.use((req, res,next)=>{
-  res.send("Backend is working")
-})
 
 
+
+
+app.get("/", (req, res) => {
+  res.send("Backend is working");
+});
 
 
 
