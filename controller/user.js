@@ -387,8 +387,10 @@ const sendMail = require("../utills/sendMail");
 const { isAuthenticated } = require("../middleware/auth");
 
 const { upload } = require("../multer");
-const { uploadFromBuffer } = require("../utills/cloudinaryUpload"); 
-// 👆 make sure path matches your file
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../utills/cloudinaryUpload");
 
 // -------------------- CREATE USER --------------------
 router.post(
@@ -408,8 +410,7 @@ router.post(
         return next(new ErrorHandler("Avatar file is required", 400));
       }
 
-      // ✅ Cloudinary upload from buffer (NO file.path)
-      const myCloud = await uploadFromBuffer(req.file.buffer, "avatars");
+      const myCloud = await uploadToCloudinary(req.file, "avatars");
 
       const user = {
         name,
@@ -422,6 +423,7 @@ router.post(
       };
 
       const activationtoken = createActivationToken(user);
+
       const frontendUrl =
         process.env.FRONTEND_URL || "http://localhost:3000";
 
@@ -581,9 +583,7 @@ router.put(
       const isPasswordValid = await user.comparePassword(password);
 
       if (!isPasswordValid) {
-        return next(
-          new ErrorHandler("Incorrect credentials", 400)
-        );
+        return next(new ErrorHandler("Incorrect credentials", 400));
       }
 
       user.name = name;
@@ -611,17 +611,16 @@ router.put(
     try {
       let user = await User.findById(req.user.id);
 
+      if (!user) {
+        return next(new ErrorHandler("User not found", 400));
+      }
+
       if (req.file) {
         if (user.avatar?.public_id) {
-          await require("cloudinary").v2.uploader.destroy(
-            user.avatar.public_id
-          );
+          await deleteFromCloudinary(user.avatar.public_id);
         }
 
-        const myCloud = await uploadFromBuffer(
-          req.file.buffer,
-          "avatars"
-        );
+        const myCloud = await uploadToCloudinary(req.file, "avatars");
 
         user.avatar = {
           public_id: myCloud.public_id,

@@ -96,18 +96,19 @@
 // module.exports=router;
 
 const express = require("express");
+const router = express.Router();
+
 const catchAsyncError = require("../middleware/catchAsyncError");
 const Shop = require("../model/shop");
 const Event = require("../model/event");
 const ErrorHandler = require("../utills/ErrorHandler");
-const router = express.Router();
 
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
 } = require("../utills/cloudinaryUpload");
 
-// CREATE EVENT
+// -------------------- CREATE EVENT --------------------
 router.post(
   "/create-event",
   catchAsyncError(async (req, res, next) => {
@@ -123,15 +124,17 @@ router.post(
       let images = [];
 
       if (typeof req.body.images === "string") {
-        images.push(req.body.images);
+        images = [req.body.images];
       } else {
         images = req.body.images || [];
       }
 
       const imagesLinks = [];
 
-      for (let i = 0; i < images.length; i++) {
-        const result = await uploadToCloudinary(images[i], "events");
+      for (let img of images) {
+        if (!img) continue;
+
+        const result = await uploadToCloudinary(img, "events");
 
         imagesLinks.push({
           public_id: result.public_id,
@@ -140,8 +143,9 @@ router.post(
       }
 
       const eventData = req.body;
+
       eventData.images = imagesLinks;
-      eventData.shop = shop;
+      eventData.shop = shop._id;
 
       const event = await Event.create(eventData);
 
@@ -155,7 +159,7 @@ router.post(
   })
 );
 
-// GET ALL EVENTS
+// -------------------- GET ALL EVENTS --------------------
 router.get("/get-all-events", async (req, res, next) => {
   try {
     const events = await Event.find();
@@ -169,10 +173,10 @@ router.get("/get-all-events", async (req, res, next) => {
   }
 });
 
-// GET EVENTS BY SHOP
+// -------------------- GET EVENTS BY SHOP --------------------
 router.get("/get-all-events/:id", async (req, res, next) => {
   try {
-    const events = await Event.find({ shopId: req.params.id });
+    const events = await Event.find({ shop: req.params.id });
 
     res.status(200).json({
       success: true,
@@ -183,7 +187,7 @@ router.get("/get-all-events/:id", async (req, res, next) => {
   }
 });
 
-// DELETE EVENT
+// -------------------- DELETE EVENT --------------------
 router.delete(
   "/delete-shop-event/:id",
   catchAsyncError(async (req, res, next) => {
@@ -194,8 +198,12 @@ router.delete(
         return next(new ErrorHandler("Event not found", 404));
       }
 
-      for (let i = 0; i < event.images.length; i++) {
-        await deleteFromCloudinary(event.images[i].public_id);
+      if (event.images?.length > 0) {
+        for (let img of event.images) {
+          if (img.public_id) {
+            await deleteFromCloudinary(img.public_id);
+          }
+        }
       }
 
       await event.deleteOne();

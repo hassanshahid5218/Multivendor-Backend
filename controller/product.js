@@ -179,8 +179,12 @@ const Product = require("../model/product");
 const Order = require("../model/order");
 const Shop = require("../model/shop");
 
-const cloudinary = require("cloudinary").v2;
 const ErrorHandler = require("../utills/ErrorHandler");
+
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../utills/cloudinaryUpload");
 
 // -------------------- CREATE PRODUCT --------------------
 router.post(
@@ -208,9 +212,7 @@ router.post(
       for (let img of images) {
         if (!img) continue;
 
-        const result = await cloudinary.uploader.upload(img, {
-          folder: "products",
-        });
+        const result = await uploadToCloudinary(img, "products");
 
         imagesLink.push({
           public_id: result.public_id,
@@ -221,7 +223,7 @@ router.post(
       const productData = req.body;
 
       productData.image = imagesLink;
-      productData.shop = shop._id; // IMPORTANT FIX
+      productData.shop = shop._id;
 
       const product = await Product.create(productData);
 
@@ -235,7 +237,7 @@ router.post(
   })
 );
 
-// -------------------- GET ALL PRODUCTS (SHOP) --------------------
+// -------------------- GET ALL PRODUCTS BY SHOP --------------------
 router.get(
   "/get-all-products-shop/:id",
   catchAsyncError(async (req, res, next) => {
@@ -281,11 +283,10 @@ router.delete(
         return next(new ErrorHandler("Product not found", 404));
       }
 
-      // delete images from cloudinary
-      if (product.image && product.image.length > 0) {
+      if (product.image?.length > 0) {
         for (let img of product.image) {
           if (img.public_id) {
-            await cloudinary.uploader.destroy(img.public_id);
+            await deleteFromCloudinary(img.public_id);
           }
         }
       }
@@ -302,7 +303,7 @@ router.delete(
   })
 );
 
-// -------------------- CREATE / UPDATE REVIEW --------------------
+// -------------------- REVIEW --------------------
 router.put(
   "/create-new-review",
   isAuthenticated,

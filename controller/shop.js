@@ -356,7 +356,6 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const cloudinary = require("cloudinary").v2;
 
 const Shop = require("../model/shop");
 const Product = require("../model/product");
@@ -369,20 +368,28 @@ const { isSeller } = require("../middleware/auth");
 const sendMail = require("../utills/sendMail");
 const sendShopToken = require("../utills/shopToken");
 
-// CREATE SHOP
+const {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require("../utills/cloudinaryUpload");
+
+// -------------------- CREATE SHOP --------------------
 router.post(
   "/create-shop",
   catchAsyncError(async (req, res, next) => {
     const { email } = req.body;
 
     const exists = await Shop.findOne({ email });
+
     if (exists) {
       return next(new ErrorHandler("User already exists", 400));
     }
 
-    const myCloud = await cloudinary.uploader.upload(req.body.avatar, {
-      folder: "avatars",
-    });
+    if (!req.body.avatar) {
+      return next(new ErrorHandler("Avatar is required", 400));
+    }
+
+    const myCloud = await uploadToCloudinary(req.body.avatar, "avatars");
 
     const seller = {
       name: req.body.name,
@@ -397,13 +404,9 @@ router.post(
       zipCode: req.body.zipCode,
     };
 
-    const createActivationToken = (data) => {
-      return jwt.sign(data, process.env.ACTIVATION_SECRET, {
-        expiresIn: "5m",
-      });
-    };
-
-    const activationToken = createActivationToken(seller);
+    const activationToken = jwt.sign(seller, process.env.ACTIVATION_SECRET, {
+      expiresIn: "5m",
+    });
 
     const activationUrl = `${
       process.env.FRONTEND_URL || "http://localhost:3000"
@@ -422,7 +425,7 @@ router.post(
   })
 );
 
-// ACTIVATE SHOP
+// -------------------- ACTIVATE SHOP --------------------
 router.post(
   "/activation",
   catchAsyncError(async (req, res, next) => {
@@ -434,6 +437,7 @@ router.post(
     );
 
     const exists = await Shop.findOne({ email: data.email });
+
     if (exists) {
       return next(new ErrorHandler("User already exists", 400));
     }
@@ -444,7 +448,7 @@ router.post(
   })
 );
 
-// LOGIN SHOP
+// -------------------- LOGIN SHOP --------------------
 router.post(
   "/login-shop",
   catchAsyncError(async (req, res, next) => {
@@ -470,7 +474,7 @@ router.post(
   })
 );
 
-// GET SELLER
+// -------------------- GET SELLER --------------------
 router.get(
   "/getSeller",
   isSeller,
@@ -488,10 +492,10 @@ router.get(
   })
 );
 
-// GET SHOP INFO
+// -------------------- GET SHOP INFO --------------------
 router.get(
   "/get-shop-info/:id",
-  catchAsyncError(async (req, res, next) => {
+  catchAsyncError(async (req, res) => {
     const shop = await Shop.findById(req.params.id);
 
     res.status(200).json({
@@ -501,7 +505,7 @@ router.get(
   })
 );
 
-// LOGOUT
+// -------------------- LOGOUT --------------------
 router.get(
   "/logout",
   catchAsyncError(async (req, res) => {
@@ -519,7 +523,7 @@ router.get(
   })
 );
 
-// UPDATE SHOP AVATAR
+// -------------------- UPDATE SHOP AVATAR --------------------
 router.put(
   "/update-shop-avatar",
   isSeller,
@@ -531,13 +535,10 @@ router.put(
     }
 
     if (seller.avatar?.public_id) {
-      await cloudinary.uploader.destroy(seller.avatar.public_id);
+      await deleteFromCloudinary(seller.avatar.public_id);
     }
 
-    const myCloud = await cloudinary.uploader.upload(req.body.avatar, {
-      folder: "avatars",
-      width: 150,
-    });
+    const myCloud = await uploadToCloudinary(req.body.avatar, "avatars");
 
     seller.avatar = {
       public_id: myCloud.public_id,
@@ -563,7 +564,7 @@ router.put(
   })
 );
 
-// UPDATE SHOP INFO
+// -------------------- UPDATE SHOP INFO --------------------
 router.put(
   "/update-seller-info",
   isSeller,
@@ -618,7 +619,7 @@ router.put(
   })
 );
 
-// UPDATE PAYMENT METHOD
+// -------------------- PAYMENT METHODS --------------------
 router.put(
   "/update-payment-methods",
   isSeller,
@@ -636,7 +637,7 @@ router.put(
   })
 );
 
-// DELETE WITHDRAW METHOD
+// -------------------- DELETE WITHDRAW METHOD --------------------
 router.delete(
   "/delete-withdraw-method",
   isSeller,
