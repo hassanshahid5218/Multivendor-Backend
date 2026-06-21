@@ -548,7 +548,7 @@ router.put(
     await seller.save();
 
     await Product.updateMany(
-      { shopId: seller._id.toString() },
+      { shopId: seller._id },
       { $set: { "shop.avatar": seller.avatar } }
     );
 
