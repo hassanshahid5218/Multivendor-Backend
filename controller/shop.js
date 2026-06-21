@@ -553,7 +553,7 @@ router.put(
     );
 
     await Event.updateMany(
-      { shopId: seller._id.toString() },
+      { shopId: seller._id },
       { $set: { "shop.avatar": seller.avatar } }
     );
 
