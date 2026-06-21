@@ -586,7 +586,7 @@ router.put(
     await shop.save();
 
     await Product.updateMany(
-      { shopId: shop._id.toString() },
+      { shopId: shop._id },
       {
         $set: {
           "shop.name": shop.name,
@@ -599,7 +599,7 @@ router.put(
     );
 
     await Event.updateMany(
-      { shopId: shop._id.toString() },
+      { shopId: shop._id },
       {
         $set: {
           "shop.name": shop.name,
